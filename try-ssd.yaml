@@ -1,20 +1,3 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-  name: try-ssd
----
-# Source: SSD/charts/dex/templates/serviceaccount.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ssd-dex
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
 ---
 # Source: SSD/charts/minio/templates/post-install-prometheus-metrics-serviceaccount.yaml
 apiVersion: v1
@@ -86,96 +69,6 @@ stringData:
       ssd:
         connectString: host=oes-db user='postgres' password='networks123' database=ssddb port=5432
 ---
-# Source: SSD/templates/ssd-gate/gate-dex-client-secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: gate-dex-client-secret
-type: Opaque
-data:
-  client-secret: "czFXNDRvRnlyb1hKcXhHZQ=="
----
-# Source: SSD/templates/ssd-gate/gate-dex-config.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: gate-dex-config
-  labels:
-    app: ssd
-    component: gate
-    heritage: "Helm"
-    release: "ssd"
-    chart: "SSD-4.0.9"
-stringData:
-  config.yaml: |
-    # https://github.com/dexidp/dex/blob/master/config.yaml.dist
-    issuer: http://localhost:8080/dex
-    web:
-      http: http://localhost:8080/dex
-    
-    storage:
-      type: memory
-    oauth2:
-      skipApprovalScreen: true
-    
-    # Static clients registered in Dex by default.
-    staticClients:
-      - id: ssd-gate
-        redirectURIs:
-          - 'http://ssd-gate:8084/oidccallbackendpoint'
-          - http://localhost:8080/oidccallbackendpoint
-        name: 'ssd gate'
-        secretEnv: GATE_CLIENT_SECRET
-    connectors: []
-    #connectors:
-    #- type: saml
-    #  id: okta
-    #  name: Okta
-    #  config:
-    #    ssoURL: https://dev-14704582.okta.com/app/dev-14704582_dex_1/exkdkpy0xoMNPZ8AX5d7/sso/saml
-    #    ca: /okta/dex-okta.pem
-    #    #ca: /etc/dex/saml-ca.pem
-    #    #redirectURI: https://ssd.ryzon7-isd40.opsmx.org/oidccallbackendpoint
-    #    redirectURI: https://dex.ryzon7-isd40.opsmx.org/dex/callback
-    #    #redirectURI: http://127.0.0.1:5556/dex/callback
-    #    usernameAttr: name
-    #    emailAttr: email
-    #    groupsAttr: groups
-    #- type: ldap
-    #  name: OpsmxLDAP
-    #  id: ad
-    #  config:
-    #    host: 10.155.4.95:389
-    #    insecureNoSSL: true
-    #    insecureSkipVerify: true
-    #    # Variable name stores ldap bindDN, bindPW in argocd-secret
-    #    bindDN: "$dex.ldap.bindDN"
-    #    bindPW: "$dex.ldap.bindPW"
-    #    usernamePrompt: Username
-    #    userSearch:
-    #      baseDN: DC=Userx,DC=opsmx,DC=com,DC=vn
-    #      filter: ""
-    #      username: sAMAccountName
-    #      idAttr: sAMAccountName
-    #      emailAttr: sAMAccountName
-    #      nameAttr: sAMAccountName
-    #    groupSearch:
-    #      baseDN: DC=Userx,DC=opsmx,DC=com,DC=vn
-    #      filter: ""
-    #      userAttr: distinguishedName
-    #      groupAttr: memberOf
-    #      nameAttr: name
-    
-    # Connectors are used to authenticate users against upstream identity providers.
-    # Enable the password database.
-    enablePasswordDB: false
-    # A static list of passwords for the password connector.
-    #staticPasswords: 
-    #- email: "admin@opsmx.io"
-    #  hash: "$2y$10$oVR6AAUpc.oitoRoRRuETu4qY/8ZzQjcIGmGUQMjMKp9vOeWv6C7C"    # password is password
-    #  username: "admin"
-    #  userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
----
 # Source: SSD/templates/ssd-gate/poc-passwords.yaml
 # Secret
 apiVersion: v1
@@ -184,8 +77,8 @@ metadata:
   name: poc-passwords
 type: Opaque
 data:
-  ADMIN_PASSWORD: "N1RPME56aEtkQkZtVlRsbw=="
-  USER1_PASSWORD: "Rk12T3IxNjJNdUJtS2ljUQ=="
+  ADMIN_PASSWORD: "YnlRYVZndUxWRHhRU3gwQg=="
+  USER1_PASSWORD: "TWJXV2FKTExabXdVeU5EOA=="
 ---
 # Source: SSD/templates/supplychain-api/ssd-supplychain-api-secret.yaml
 apiVersion: v1
@@ -4029,112 +3922,6 @@ data:
     sbomPath: /tools/sbom
     graphQLAddr: http://dgraph-public:8080/graphql
 ---
-# Source: SSD/charts/minio/templates/pvc.yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ssd-minio
-  labels:
-    app: minio
-    chart: minio-8.0.9
-    release: ssd
-    heritage: Helm
-spec:
-  accessModes:
-    - "ReadWriteOnce"
-  resources:
-    requests:
-      storage: "10Gi"
----
-# Source: SSD/templates/ssd-decisions/semgrep-pvc.yaml
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: semgrep-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: "5Gi"
----
-# Source: SSD/templates/ssd-decisions/ssd-decisions-pvc.yaml
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: openssf-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: "5Gi"
----
-# Source: SSD/templates/toolchain/ssd-toolchain-pvc.yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: tool-chain
-spec:
-  accessModes:
-    - ReadWriteOnce
-  volumeMode: Filesystem
-  resources:
-    requests:
-      storage: 5Gi
----
-# Source: SSD/charts/dex/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ssd-dex
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
-rules:
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["list", "create"]
----
-# Source: SSD/charts/dex/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: ssd-dex-cluster
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  kind: ClusterRole
-  apiGroup: rbac.authorization.k8s.io
-  name: ssd-dex
-subjects:
-- kind: ServiceAccount
-  namespace: try-ssd
-  name: ssd-dex
----
-# Source: SSD/charts/dex/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: ssd-dex
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
-rules:
-  - apiGroups: ["dex.coreos.com"]
-    resources: ["*"]
-    verbs: ["*"]
----
 # Source: SSD/charts/minio/templates/post-install-prometheus-metrics-role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -4205,26 +3992,6 @@ rules:
   - update
   - watch
 ---
-# Source: SSD/charts/dex/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: ssd-dex
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  kind: Role
-  apiGroup: rbac.authorization.k8s.io
-  name: ssd-dex  
-subjects:
-- kind: ServiceAccount
-  namespace: try-ssd
-  name: ssd-dex
----
 # Source: SSD/charts/minio/templates/post-install-prometheus-metrics-rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -4271,34 +4038,6 @@ subjects:
 - kind: ServiceAccount
   name: default
   namespace: try-ssd
----
-# Source: SSD/charts/dex/templates/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: ssd-dex
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 5556
-      targetPort: http
-      protocol: TCP
-      appProtocol: http
-    - name: telemetry
-      port: 5558
-      targetPort: telemetry
-      protocol: TCP
-      appProtocol: http
-  selector:
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
 ---
 # Source: SSD/charts/minio/templates/service.yaml
 apiVersion: v1
@@ -4525,87 +4264,6 @@ spec:
     app: oes
     component: oes-toolchain
 ---
-# Source: SSD/charts/dex/templates/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ssd-dex
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
-    
-  
-spec:
-  replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: dex
-      app.kubernetes.io/instance: ssd
-  template:
-    metadata:
-      annotations:
-      
-      labels:
-        app.kubernetes.io/name: dex
-        app.kubernetes.io/instance: ssd
-    spec:
-      serviceAccountName: ssd-dex
-      securityContext:
-        {}
-      containers:
-        - name: dex
-          securityContext:
-            {}
-          image: "ghcr.io/dexidp/dex:v2.37.0"
-          imagePullPolicy: IfNotPresent
-          args:
-            - dex
-            - serve
-            - --web-http-addr
-            - 0.0.0.0:5556
-            - --telemetry-addr
-            - 0.0.0.0:5558
-            - /etc/dex/config.yaml
-          env:
-            - name: GATE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  key: client-secret
-                  name: gate-dex-client-secret
-          ports:
-            - name: http
-              containerPort: 5556
-              protocol: TCP
-            - name: telemetry
-              containerPort: 5558
-              protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /healthz/live
-              port: telemetry
-          readinessProbe:
-            httpGet:
-              path: /healthz/ready
-              port: telemetry
-          resources:
-            {}
-          volumeMounts:
-            - name: config
-              mountPath: /etc/dex
-              readOnly: true
-      volumes:
-        - name: config
-          secret:
-            secretName: gate-dex-config
-        - name: gate-dex-client-secret
-          secret:
-            defaultMode: 420
-            secretName: gate-dex-client-secret
----
 # Source: SSD/charts/minio/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -4671,8 +4329,7 @@ spec:
               memory: 4Gi      
       volumes:
         - name: export
-          persistentVolumeClaim:
-            claimName: ssd-minio
+          emptyDir: {}
         - name: minio-user
           secret:
             secretName: ssd-minio
@@ -4853,11 +4510,9 @@ spec:
       volumes:
         - name: kubescapedir
         - name: semgrep
-          persistentVolumeClaim:
-            claimName: semgrep-pvc
+          emptyDir: {}
         - name: openssf
-          persistentVolumeClaim:
-            claimName: openssf-pvc
+          emptyDir: {}
         - name: ssd-opa-volume
           secret:
             secretName: ssd-opa
@@ -5206,8 +4861,7 @@ spec:
           hostPath:
             path: /var/run
         - name: sbom
-          persistentVolumeClaim:
-            claimName: tool-chain
+          emptyDir: {}
         - name: tool-chain-volume
           configMap:
             name: tool-chain
@@ -5285,19 +4939,9 @@ spec:
       - name: datadir
         persistentVolumeClaim:
           claimName: datadir
-  updateStrategy:
-    type: RollingUpdate
-  volumeClaimTemplates:
-  - metadata:
-      name: datadir
-      annotations:
-        volume.alpha.kubernetes.io/storage-class: anything
-    spec:
-      accessModes:
-        - "ReadWriteOnce"
-      resources:
-        requests:
-          storage: 5Gi
+      volumes:
+      - name: datadir
+        emptyDir: {}
 ---
 # Source: SSD/templates/oes-db/oes-db-statefulset.yaml
 apiVersion: apps/v1
@@ -5354,37 +4998,9 @@ spec:
           periodSeconds: 5
       securityContext:
         fsGroup: 1000
-  volumeClaimTemplates:
-  - metadata:
-      creationTimestamp: null
-      labels:
-        app: oes
-        component: db
-      name: oes-db-postgresql
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 8Gi
-      volumeMode: Filesystem
----
-# Source: SSD/charts/dex/templates/tests/no-config-secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: gate-dex-config-test-no-create
-  labels:
-    helm.sh/chart: dex-0.15.3
-    app.kubernetes.io/name: dex
-    app.kubernetes.io/instance: ssd
-    app.kubernetes.io/version: "2.37.0"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    "helm.sh/hook": test
-type: Opaque
-data:
-  config.yaml: "e30="
+      volumes:
+      - name: oes-db-postgresql
+        emptyDir: {}
 ---
 # Source: SSD/charts/minio/templates/post-install-create-bucket-job.yaml
 apiVersion: batch/v1
