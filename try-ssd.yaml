@@ -55,7 +55,7 @@ metadata:
     component: oes-ssd-opa
 stringData:
   ssd-opa.yaml: |
-    opaIngress: http://localhost:8080
+    opaIngress: http://localhost:8080/ssd-opa
     httpListenPort: 8200
     kubescapeFilePath: /app/kubescapeDir
     toolChainAddr: http://tool-chain:8100/ #default value & optional
@@ -77,8 +77,8 @@ metadata:
   name: poc-passwords
 type: Opaque
 data:
-  ADMIN_PASSWORD: "VjZCc0lXemJycTNkNmNUaw=="
-  USER1_PASSWORD: "dWFEMkFMM2tDQU9Ib2Uzcg=="
+  ADMIN_PASSWORD: "YXhvdzBmQjg1aWNZR0kxcw=="
+  USER1_PASSWORD: "ZHBCVVhzcVBiN2VtU0VUcQ=="
 ---
 # Source: SSD/templates/supplychain-api/ssd-supplychain-api-secret.yaml
 apiVersion: v1
@@ -176,13 +176,13 @@ apiVersion: v1
 data:
   AESEncryptionKey: bnVsbA==
   approved_build_server: bnVsbA==
-  authorized_artifact_repo: bnVsbA==
-  image_containers: bnVsbA==
-  openAI_creds: bnVsbA==
-  opsmx_creds: bnVsbA==
+  authorized_artifact_repo: ZG9ja2VyLmlvL29wc214MTEsIGRvY2tlci5pby9vcHNteHB1YmxpYyxxdWF5LmlvL29wc214cHVibGljLGRvY2tlci5pby9rc3JpbmltYmE=
+  image_containers: ZG9ja2VyOgogIHBhc3N3b3JkOiB4eHh4eHh4CiAgdXJsOiBodHRwczovL2RvY2tlci5pby8KICB1c2VybmFtZTogeHh4eA==
+  openAI_creds: eHh4eHh4eHg=
+  opsmx_creds: cGFzc3dvcmQ6IG9wc214YWRtaW4xMjMKdXJsOiBQUk9UT0NPTDovL1NTRC5VUkwuQ09NUEFOWS5DT00KdXNlck5hbWU6IGFkbWlu
   sbom_tool: bnVsbA==
-  semgrep_webApi_token: bnVsbA==
-  sonarQube_creds: bnVsbA==
+  semgrep_webApi_token: eHh4eHh4
+  sonarQube_creds: eHh4eHg=
   source_code: Z2l0aHViOgogIHJlc3RfYXBpX3VybDogaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbQogIHRva2VuOiB4eHh4eHh4eHh4eHgKc2xhY2s6CiAgY2hhbm5lbDogeHh4eHgKICB0b2tlbjogeHh4eHh4eHh4eA==
 kind: Secret
 metadata:
@@ -3870,6 +3870,65 @@ kind: ConfigMap
 metadata:
   name: secret-decoder
 ---
+# Source: SSD/templates/ssd-gate/services-config.yaml
+apiVersion: v1
+data:
+  services-config.yaml: |
+    # Backend services to route the calls to. Routes are processed in the order provided here
+    # All routed configured can be viewed in the browser at the /showroutes endpoint
+    # The 3 routes below are optional, they are filled in automatically if nothing is specified
+    # services:   # OPTIONAL default backends are programmed in. If specified ALL backends including these MUST be included
+    - name: supplychain-api  # Name
+      path_prefixes:
+      - "/ssdservice"        # incoming calls are routed based on this. Processed in Order i.e. we can have multiple of these going to the same backend
+      baseUrl: supplychain-api:8099
+      disabled: false          # Default false, set this to true to temporarily disable a service
+      scheme: http           # Default http. If the Backend is httpS, please set it
+      streaming: false # Default is false. set this if we have a streaming backend e.g. a service that returns results of a DB-query
+      auth_required: true # Default false. Note that if the backend does not need auth i.e it will not get the user who requested this
+      strip_prefix: false  # Default false. If true, the path_prefix is removed before sending to backend. Best is to use only ONE path_prefix
+      health_endpoint: /healthz # Default, change only if required
+    - name: rabbitmq
+      path_prefixes:
+      - "/rabbit"
+      baseUrl: rabbitmq-service:15672
+      health_endpoint: /
+      strip_prefix: true
+    - name: ssd-opa
+      path_prefixes:
+      - "/ssd-opa"
+      baseUrl: ssd-opa:8200
+      health_endpoint: /health
+      strip_prefix: true
+    - name: supplychain-api
+      baseUrl: tool-chain:8100
+      health_endpoint: /health
+    - name: supplychain-preprocessor
+      baseUrl: supplychain-preprocessor:8058
+      health_endpoint: /healthz
+    - name: tool-chain
+      baseUrl: tool-chain:8100
+      health_endpoint: /health
+    - name: dgraph
+      baseUrl: dgraph-public:8000
+      health_endpoint: /
+    - name: oes-ui
+      baseUrl: oes-ui:8080
+      health_endpoint: "/ui/index.html"
+    - name: ssd-minio 
+      baseUrl: ssd-minio:9000
+      health_endpoint: ""
+    
+kind: ConfigMap
+metadata:
+  name: services-config
+  labels:
+    app: ssd
+    component: gate
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+---
 # Source: SSD/templates/ssd-gate/ssd-gate-config.yaml
 apiVersion: v1
 data:
@@ -4540,7 +4599,7 @@ spec:
       - args:
         - /app/ssdgate
         - -configFile=/app/config/ssd-gate-config.yaml
-        - -unsafe=true                                 # Remove this after login is configured correctly
+        - -unsafe=false                                 # set to true during initial configuration, not required in production
         image: ksrinimba/ssdgate:latest   # Replace with quay.io image
         #imagePullPolicy: Always
         name: ssd-gate
@@ -4576,6 +4635,8 @@ spec:
         volumeMounts:
         - mountPath: /app/config # This is the emptyDir where the processed configs are placed
           name: config-home
+        - mountPath: /app/services # this is where we expect to find the default services-config.yaml
+          name: services-config
         - mountPath: /app/saml   # Any saml-authenticator specific files go here. this is option
           name: saml-files
         - mountPath: /usr/local/share/ca-certificates
@@ -4611,6 +4672,11 @@ spec:
           name: ssd-gate-config
           optional: true
         name: ssd-gate-config
+      - configMap:                # Mounted on /tmp/config, that has secrets replaced and placed in /app/config
+          defaultMode: 420
+          name: services-config
+          optional: true
+        name: services-config
       - configMap:                # Script for secret replacement, use "encrypted:SECRETE-NAME:KEY" for value, key should be same as the secret-name
           defaultMode: 420
           name: secret-decoder
@@ -4996,6 +5062,21 @@ spec:
       volumes:
       - name: oes-db-postgresql
         emptyDir: {}
+---
+# Source: SSD/templates/ssd-decisions/ssd-opa.yaml
+opaIngress: http://test-ssd.ryzon7-isd40.opsmx.org
+httpListenPort: 8200
+kubescapeFilePath: /app/kubescapeDir
+toolChainAddr: http://tool-chain:8100/ #default value & optional
+graphQLAddr: http://dgraph-public:8080/graphql #default value & optional
+openSSFFilePath: /app/OpenSSF #default value & optional
+semgrepFilePath: /app/semgrep #default value & optional
+sonarQubeAddr: https://sonar.opsmx.com/
+reScheduleDays: 1
+reScheduleTime: 00:00
+databases:
+  ssd:
+    connectString: host=oes-db user='postgres' password='networks123' database=ssddb port=5432
 ---
 # Source: SSD/charts/minio/templates/post-install-create-bucket-job.yaml
 apiVersion: batch/v1
